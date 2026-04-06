@@ -19,7 +19,7 @@ if (fs.existsSync(TOKEN_FILE)) {
   } catch (_) {}
 }
 
-app.use(cors({ origin: ['https://localhost:3000', 'http://localhost:3000'] }));
+app.use(cors({ origin: ['https://localhost:3000', 'https://127.0.0.1:3000'] }));
 app.use(express.json());
 
 // ── Auth endpoints ──────────────────────────────────────────────────────────
@@ -90,9 +90,23 @@ app.use('/api/sf', (req, res) => {
   sfReq.end();
 });
 
-// ── Start ───────────────────────────────────────────────────────────────────
+// ── Start (HTTPS using office-addin-dev-certs) ──────────────────────────────
 
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`SE Assist proxy listening on http://127.0.0.1:${PORT}`);
+const CERT_DIR = path.join(require('os').homedir(), '.office-addin-dev-certs');
+const certFile = path.join(CERT_DIR, 'localhost.crt');
+const keyFile  = path.join(CERT_DIR, 'localhost.key');
+
+if (!fs.existsSync(certFile) || !fs.existsSync(keyFile)) {
+  console.error('Dev certs not found. Run: npm run install-certs (from project root)');
+  process.exit(1);
+}
+
+const httpsServer = require('https').createServer(
+  { cert: fs.readFileSync(certFile), key: fs.readFileSync(keyFile) },
+  app
+);
+
+httpsServer.listen(PORT, '127.0.0.1', () => {
+  console.log(`SE Assist proxy listening on https://127.0.0.1:${PORT}`);
   console.log(`Authenticated: ${!!sessionToken}`);
 });

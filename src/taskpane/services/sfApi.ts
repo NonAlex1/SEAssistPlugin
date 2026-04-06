@@ -1,4 +1,4 @@
-const PROXY_BASE = 'http://127.0.0.1:3002';
+const PROXY_BASE = 'https://127.0.0.1:3002';
 
 export interface SfRecord {
   Id: string;

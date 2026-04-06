@@ -3,6 +3,39 @@ const https = require('https');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { execFile, exec } = require('child_process');
+
+const SF_ORG_ALIAS = 'seassist-plugin';
+const SF_INSTANCE_URL = 'https://extremesaas.my.salesforce.com';
+
+// Find sf CLI binary
+function findSfCli() {
+  const candidates = [
+    '/opt/homebrew/bin/sf',
+    '/usr/local/bin/sf',
+    '/usr/bin/sf',
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
+// Get access token from sf CLI for stored org
+function getSfToken(sfBin) {
+  return new Promise((resolve, reject) => {
+    execFile(sfBin, ['org', 'display', '--target-org', SF_ORG_ALIAS, '--json'], (err, stdout) => {
+      try {
+        const result = JSON.parse(stdout);
+        const token = result?.result?.accessToken;
+        if (token) resolve(token);
+        else reject(new Error('No accessToken in sf org display output'));
+      } catch {
+        reject(new Error('Failed to parse sf org display output'));
+      }
+    });
+  });
+}
 
 const app = express();
 const PORT = 3002;
@@ -25,14 +58,61 @@ app.use(express.json());
 // ── Auth endpoints ──────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, authenticated: !!sessionToken });
+  const sfBin = findSfCli();
+  res.json({ ok: true, authenticated: !!sessionToken, sfCliAvailable: !!sfBin });
 });
+
+// ── SF CLI OAuth flow ───────────────────────────────────────────────────────
+
+let loginInProgress = false;
+
+app.post('/api/login/start', async (_req, res) => {
+  const sfBin = findSfCli();
+  if (!sfBin) return res.status(503).json({ error: 'sf CLI not found. Run: brew install sf' });
+  if (loginInProgress) return res.json({ ok: true, status: 'pending' });
+
+  loginInProgress = true;
+  res.json({ ok: true, status: 'started' });
+
+  // First try re-using an existing cached org token
+  try {
+    const token = await getSfToken(sfBin);
+    sessionToken = token;
+    fs.writeFileSync(TOKEN_FILE, token, 'utf8');
+    loginInProgress = false;
+    console.log('Re-used cached sf CLI token.');
+    return;
+  } catch { /* no cached token — do full login */ }
+
+  // Full browser OAuth login
+  execFile(sfBin, ['org', 'login', 'web',
+    '--instance-url', SF_INSTANCE_URL,
+    '--alias', SF_ORG_ALIAS,
+    '--json',
+  ], async (err, stdout, stderr) => {
+    loginInProgress = false;
+    if (err) { console.error('sf org login web failed:', stderr); return; }
+    try {
+      const token = await getSfToken(sfBin);
+      sessionToken = token;
+      fs.writeFileSync(TOKEN_FILE, token, 'utf8');
+      console.log('SF CLI OAuth complete — token stored.');
+    } catch (e) {
+      console.error('Failed to retrieve token after login:', e.message);
+    }
+  });
+});
+
+app.get('/api/login/status', (_req, res) => {
+  res.json({ authenticated: !!sessionToken, pending: loginInProgress });
+});
+
+// ── Manual token (fallback) ─────────────────────────────────────────────────
 
 app.post('/api/auth', (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'token required' });
   sessionToken = token.trim();
-  // Persist so it survives proxy restarts
   fs.writeFileSync(TOKEN_FILE, sessionToken, 'utf8');
   res.json({ ok: true });
 });

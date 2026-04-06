@@ -207,7 +207,7 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
     setLoadingAccounts(true);
     try {
       const res = await fetch(
-        `http://127.0.0.1:3002/api/sf/query?q=${encodeURIComponent(
+        `https://127.0.0.1:3002/api/sf/query?q=${encodeURIComponent(
           `SELECT Id, Name, Website, BillingCity FROM Account WHERE Name LIKE '%${accountSearch}%' ORDER BY Name LIMIT 15`
         )}`
       );
@@ -286,9 +286,10 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
         {/* Account */}
         <Field label="Account" hint={context?.externalDomains.length ? `Searched by: ${context.externalDomains.join(', ')}` : undefined}>
           <Combobox
-            placeholder={loadingAccounts ? 'Searching…' : 'Type to search accounts…'}
+            placeholder={loadingAccounts ? 'Searching…' : 'Type name, press Enter to search…'}
             value={accountSearch}
             onChange={handleAccountSearchChange}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleManualAccountSearch(); }}
             onOptionSelect={(_e, d) => {
               const acct = accounts.find((a) => a.Id === d.optionValue);
               if (acct) handleAccountSelect(acct);
@@ -321,14 +322,14 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
               <OptionGroup label="Open">
                 {opportunities.filter((o) => !o.IsClosed).map((o) => (
                   <Option key={o.Id} value={o.Id} text={o.Name}>
-                    {o.Name} — {o.StageName}
+                    {o.Name} — {o.StageName}{o.Amount != null ? ` · $${o.Amount.toLocaleString()}` : ''}
                   </Option>
                 ))}
               </OptionGroup>
               <OptionGroup label="Recently Closed">
                 {opportunities.filter((o) => o.IsClosed).map((o) => (
                   <Option key={o.Id} value={o.Id} text={o.Name}>
-                    {o.Name} — {o.CloseDate}
+                    {o.Name} — {o.CloseDate}{o.Amount != null ? ` · $${o.Amount.toLocaleString()}` : ''}
                   </Option>
                 ))}
               </OptionGroup>

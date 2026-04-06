@@ -24,14 +24,35 @@ function findSfCli() {
 // Get access token from sf CLI for stored org
 function getSfToken(sfBin) {
   return new Promise((resolve, reject) => {
-    execFile(sfBin, ['org', 'display', '--target-org', SF_ORG_ALIAS, '--json'], (err, stdout) => {
+    // NO_COLOR + TERM=dumb prevent sf from injecting ANSI escape codes into --json output
+    const env = { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0', TERM: 'dumb' };
+    execFile(sfBin, ['org', 'display', '--target-org', SF_ORG_ALIAS, '--json'], { env }, (err, stdout, stderr) => {
       try {
-        const result = JSON.parse(stdout);
+        // 1. Strip all ANSI/VT escape sequences (e.g. \x1b[0m injected by sf)
+        // 2. Strip BOM (\uFEFF) and other C0/C1 control chars except \t \n \r
+        const cleaned = stdout
+          .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '') // ANSI sequences
+          .replace(/\uFEFF/g, '')                                   // BOM
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');     // stray control chars
+
+        // Find the outermost JSON object — skip any warning lines that precede it
+        const start = cleaned.indexOf('{');
+        const end = cleaned.lastIndexOf('}');
+        if (start === -1 || end === -1 || end <= start) {
+          return reject(new Error('No JSON object found in sf org display output'));
+        }
+        const jsonStr = cleaned.slice(start, end + 1);
+        const result = JSON.parse(jsonStr);
         const token = result?.result?.accessToken;
-        if (token) resolve(token);
-        else reject(new Error('No accessToken in sf org display output'));
-      } catch {
-        reject(new Error('Failed to parse sf org display output'));
+        if (token) {
+          resolve(token);
+        } else {
+          reject(new Error('No accessToken field in sf org display result'));
+        }
+      } catch (e) {
+        // Dump raw stdout (first 500 chars) so we can diagnose next time
+        const preview = JSON.stringify(stdout.slice(0, 500));
+        reject(new Error(`Failed to parse sf org display output: ${e.message} | stdout preview: ${preview}`));
       }
     });
   });

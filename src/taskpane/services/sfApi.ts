@@ -21,6 +21,7 @@ export interface Opportunity extends SfRecord {
   StageName: string;
   CloseDate: string;
   IsClosed: boolean;
+  Amount?: number;
 }
 
 // ── Proxy health / auth ─────────────────────────────────────────────────────
@@ -105,7 +106,7 @@ export async function findOpportunitiesByAccount(accountId: string): Promise<Opp
   const dateStr = oneYearAgo.toISOString().split('T')[0];
 
   const soql = `
-    SELECT Id, Name, StageName, CloseDate, IsClosed
+    SELECT Id, Name, StageName, CloseDate, IsClosed, Amount
     FROM Opportunity
     WHERE AccountId = '${accountId}'
       AND (IsClosed = false OR CloseDate >= ${dateStr})

@@ -5,7 +5,8 @@ const devCerts = require('office-addin-dev-certs');
 
 module.exports = async (env, argv) => {
   const isDev = argv.mode === 'development';
-  const httpsOptions = await devCerts.getHttpsServerOptions();
+  // Only load dev certs when running the dev server — avoids failure in CI
+  const httpsOptions = isDev ? await devCerts.getHttpsServerOptions() : {};
 
   return {
     entry: {

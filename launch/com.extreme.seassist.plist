@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Mac LaunchAgent — auto-starts the SE Assist proxy on login.
+
+  Install:
+    cp launch/com.extreme.seassist.plist ~/Library/LaunchAgents/
+    # Edit WorkingDirectory and ProgramArguments paths below to match your setup
+    launchctl load ~/Library/LaunchAgents/com.extreme.seassist.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.extreme.seassist.plist
+    rm ~/Library/LaunchAgents/com.extreme.seassist.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.extreme.seassist</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>/Users/anonikov/Library/CloudStorage/OneDrive-Personal/Develelopment/SEAssistPlugin/proxy/server.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/anonikov/Library/CloudStorage/OneDrive-Personal/Develelopment/SEAssistPlugin/proxy</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/seassist-proxy.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/seassist-proxy.log</string>
+</dict>
+</plist>

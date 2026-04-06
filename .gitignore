@@ -1,0 +1,8 @@
+node_modules/
+dist/
+proxy/node_modules/
+*.pem
+*.key
+*.crt
+.env
+.DS_Store

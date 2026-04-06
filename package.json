@@ -1,0 +1,32 @@
+{
+  "name": "se-assist-plugin",
+  "version": "1.0.0",
+  "description": "Outlook add-in to create Salesforce SE Assist records from emails and calendar events",
+  "scripts": {
+    "start": "webpack serve --mode development --https",
+    "build": "webpack --mode production",
+    "start-proxy": "node proxy/server.js",
+    "dev": "concurrently \"npm run start\" \"npm run start-proxy\""
+  },
+  "dependencies": {
+    "@fluentui/react-components": "^9.46.2",
+    "@fluentui/react-icons": "^2.0.226",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/office-js": "^1.0.358",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "concurrently": "^8.2.2",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.10.0",
+    "html-webpack-plugin": "^5.6.0",
+    "style-loader": "^3.3.4",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  }
+}

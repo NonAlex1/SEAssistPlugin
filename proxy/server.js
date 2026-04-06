@@ -84,14 +84,17 @@ app.post('/api/login/start', async (_req, res) => {
     return;
   } catch { /* no cached token — do full login */ }
 
-  // Full browser OAuth login
+  // Full browser OAuth login — keep loginInProgress=true until token is stored
   execFile(sfBin, ['org', 'login', 'web',
     '--instance-url', SF_INSTANCE_URL,
     '--alias', SF_ORG_ALIAS,
     '--json',
   ], async (err, stdout, stderr) => {
-    loginInProgress = false;
-    if (err) { console.error('sf org login web failed:', stderr); return; }
+    if (err) {
+      console.error('sf org login web failed:', stderr);
+      loginInProgress = false;
+      return;
+    }
     try {
       const token = await getSfToken(sfBin);
       sessionToken = token;
@@ -99,6 +102,8 @@ app.post('/api/login/start', async (_req, res) => {
       console.log('SF CLI OAuth complete — token stored.');
     } catch (e) {
       console.error('Failed to retrieve token after login:', e.message);
+    } finally {
+      loginInProgress = false;   // only clear AFTER token is set (or failed)
     }
   });
 });

@@ -69,7 +69,8 @@ export const AuthSetup: React.FC<AuthSetupProps> = ({ sfCliAvailable, onAuthenti
     setLoginPending(true);
     await fetch(`${PROXY_BASE}/api/login/start`, { method: 'POST' });
 
-    // Poll until authenticated
+    const deadline = Date.now() + 5 * 60 * 1000; // 5-minute timeout
+
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${PROXY_BASE}/api/login/status`);
@@ -79,13 +80,16 @@ export const AuthSetup: React.FC<AuthSetupProps> = ({ sfCliAvailable, onAuthenti
           setPollInterval(null);
           setLoginPending(false);
           onAuthenticated();
-        } else if (!data.pending) {
-          // Login process ended without success
-          clearInterval(interval);
-          setPollInterval(null);
-          setLoginPending(false);
+          return;
         }
       } catch { /* proxy unreachable, keep polling */ }
+
+      // Stop only on timeout — not on pending=false (avoids race condition)
+      if (Date.now() > deadline) {
+        clearInterval(interval);
+        setPollInterval(null);
+        setLoginPending(false);
+      }
     }, 2000);
     setPollInterval(interval);
   };

@@ -1,20 +1,20 @@
-// Thin wrapper around OfficeRuntime.storage (persists across sessions)
+// Storage wrapper — uses localStorage (available in all Outlook WebView versions).
+// OfficeRuntime.storage requires Mailbox 1.9+ and isn't universally available.
 
 const TOKEN_KEY = 'sf_session_token';
 
 export async function getToken(): Promise<string | null> {
   try {
-    const val = await OfficeRuntime.storage.getItem(TOKEN_KEY);
-    return val ?? null;
+    return localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
 }
 
 export async function setToken(token: string): Promise<void> {
-  await OfficeRuntime.storage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(TOKEN_KEY, token);
 }
 
 export async function clearToken(): Promise<void> {
-  await OfficeRuntime.storage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
 }

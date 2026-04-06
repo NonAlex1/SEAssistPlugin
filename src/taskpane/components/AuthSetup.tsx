@@ -60,7 +60,7 @@ export const AuthSetup: React.FC<AuthSetupProps> = ({ onAuthenticated }) => {
       await setToken(trimmed);
       onAuthenticated();
     } catch (e: unknown) {
-      setError((e instanceof Error ? e.message : String(e)) + ' — make sure the proxy is running.');
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }

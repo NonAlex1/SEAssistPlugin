@@ -11,7 +11,7 @@ import {
 import { saveTokenToProxy } from '../services/sfApi';
 import { setToken } from '../services/storage';
 
-const SF_URL = 'https://extremesaas.lightning.force.com/';
+const SF_URL = 'https://extremesaas.my.salesforce.com/';
 
 const useStyles = makeStyles({
   root: {
@@ -76,16 +76,18 @@ export const AuthSetup: React.FC<AuthSetupProps> = ({ onAuthenticated }) => {
       <Text weight="semibold" size={300}>Steps:</Text>
       <ol className={styles.steps}>
         <li>
-          <Link onClick={handleOpenSF}>Open Salesforce</Link> in your browser and sign in with SSO.
+          <Link onClick={handleOpenSF}>Click here</Link> to open{' '}
+          <span className={styles.code}>extremesaas.my.salesforce.com</span> — SSO will log you in automatically.
         </li>
         <li>
           Press <span className={styles.code}>F12</span> → <b>Application</b> tab →{' '}
-          <b>Cookies</b> → <span className={styles.code}>https://extremesaas.my.salesforce.com</span>
+          <b>Cookies</b> → select <span className={styles.code}>https://extremesaas.my.salesforce.com</span>{' '}
+          <b>(not the lightning.force.com entry)</b>
         </li>
         <li>
-          Find the cookie named <span className={styles.code}>sid</span> and copy its value.
+          Find the cookie named <span className={styles.code}>sid</span> and copy its full value.
         </li>
-        <li>Paste it below.</li>
+        <li>Paste it below and click Connect.</li>
       </ol>
 
       <Field

@@ -60,6 +60,7 @@ app.use('/api/sf', (req, res) => {
     method: req.method,
     headers: {
       Authorization: `Bearer ${sessionToken}`,
+      Cookie: `sid=${sessionToken}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },

@@ -50,10 +50,15 @@ export async function clearTokenFromProxy(): Promise<void> {
 
 // ── Generic SF REST helpers ─────────────────────────────────────────────────
 
+export class SessionExpiredError extends Error {
+  constructor() { super('Session expired — please reconnect to Salesforce.'); }
+}
+
 async function sfGet<T>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${PROXY_BASE}/api/sf${path}`);
   if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const res = await fetch(url.toString());
+  if (res.status === 401) throw new SessionExpiredError();
   const data = await res.json();
   if (!res.ok) {
     const msg = Array.isArray(data) ? data[0]?.message : data?.error;
@@ -68,6 +73,7 @@ async function sfPost<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  if (res.status === 401) throw new SessionExpiredError();
   const data = await res.json();
   if (!res.ok) {
     const msg = Array.isArray(data) ? data[0]?.message : data?.error;

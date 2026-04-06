@@ -18,6 +18,7 @@ import {
   findAccountsByDomains,
   findOpportunitiesByAccount,
   createSEAssist,
+  SessionExpiredError,
   Account,
   Opportunity,
   SEAssistPayload,
@@ -121,9 +122,10 @@ const MultiCheckbox: React.FC<{
 
 interface Props {
   onSignOut: () => void;
+  onSessionExpired: () => void;
 }
 
-export const SEAssistForm: React.FC<Props> = ({ onSignOut }) => {
+export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) => {
   const styles = useStyles();
 
   // Form state
@@ -172,6 +174,7 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut }) => {
               setAccounts(accts);
               if (accts.length === 1) handleAccountSelect(accts[0]);
             })
+            .catch((e) => { if (e instanceof SessionExpiredError) onSessionExpired(); })
             .finally(() => setLoadingAccounts(false));
         }
       })
@@ -187,7 +190,7 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut }) => {
     setLoadingOpps(true);
     findOpportunitiesByAccount(acct.Id)
       .then(setOpportunities)
-      .catch(() => {})
+      .catch((e) => { if (e instanceof SessionExpiredError) onSessionExpired(); })
       .finally(() => setLoadingOpps(false));
   };
 
@@ -241,6 +244,7 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut }) => {
       const result = await createSEAssist(payload);
       setCreatedId(result.id);
     } catch (e: unknown) {
+      if (e instanceof SessionExpiredError) { onSessionExpired(); return; }
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);

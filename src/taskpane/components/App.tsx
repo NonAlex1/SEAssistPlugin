@@ -62,6 +62,11 @@ export const App: React.FC = () => {
     setState('auth');
   };
 
+  const handleSessionExpired = async () => {
+    await clearToken();
+    setState('auth');
+  };
+
   if (state === 'loading') {
     return (
       <FluentProvider theme={webLightTheme}>
@@ -98,7 +103,7 @@ export const App: React.FC = () => {
         {state === 'auth' ? (
           <AuthSetup onAuthenticated={() => setState('ready')} />
         ) : (
-          <SEAssistForm onSignOut={handleSignOut} />
+          <SEAssistForm onSignOut={handleSignOut} onSessionExpired={handleSessionExpired} />
         )}
       </div>
     </FluentProvider>

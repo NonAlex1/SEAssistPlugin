@@ -1,9 +1,11 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const devCerts = require('office-addin-dev-certs');
 
-module.exports = (env, argv) => {
+module.exports = async (env, argv) => {
   const isDev = argv.mode === 'development';
+  const httpsOptions = await devCerts.getHttpsServerOptions();
 
   return {
     entry: {
@@ -50,7 +52,10 @@ module.exports = (env, argv) => {
     ],
     devServer: {
       port: 3000,
-      server: 'https',
+      server: {
+        type: 'https',
+        options: httpsOptions,
+      },
       hot: true,
       headers: {
         'Access-Control-Allow-Origin': '*',

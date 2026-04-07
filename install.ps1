@@ -78,15 +78,10 @@ Push-Location $INSTALL
 npm install --silent
 Pop-Location
 
-# ── 5. Dev certificates ───────────────────────────────────────────────────────
-$certStore = Get-ChildItem Cert:\CurrentUser\Root | Where-Object { $_.Subject -like "*localhost*" } | Select-Object -First 1
-if (-not $certStore) {
-    Write-OK "Installing localhost dev certificates..."
-    Set-Location $INSTALL
-    npx --yes office-addin-dev-certs install
-} else {
-    Write-OK "Dev certificates already installed."
-}
+# ── 5. PKI certificate + key ──────────────────────────────────────────────────
+Write-OK "Installing proxy certificate..."
+Invoke-WebRequest "$RAW/certs/seassist.crt" -OutFile "$INSTALL\seassist.crt" -UseBasicParsing
+Invoke-WebRequest "$RAW/certs/seassist.key" -OutFile "$INSTALL\seassist.key" -UseBasicParsing
 
 # ── 6. Scheduled Task (auto-start on login) ───────────────────────────────────
 $nodePath = (Get-Command node).Source
@@ -130,14 +125,6 @@ Write-OK "Proxy task registered — will auto-start on every login."
 # Wait for proxy to come up
 Start-Sleep -Seconds 3
 try {
-    # Skip TLS validation for localhost self-signed cert
-    add-type @"
-        using System.Net; using System.Security.Cryptography.X509Certificates;
-        public class TrustAll : ICertificatePolicy {
-            public bool CheckValidationResult(ServicePoint sp, X509Certificate cert, WebRequest req, int problem) { return true; }
-        }
-"@
-    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAll
     $resp = Invoke-RestMethod -Uri "https://127.0.0.1:3002/api/health" -Method GET
     if ($resp.ok) { Write-OK "Proxy is running at https://127.0.0.1:3002" }
 } catch {

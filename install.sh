@@ -59,15 +59,11 @@ info "Installing proxy dependencies..."
 cd "$INSTALL_DIR"
 npm install --silent
 
-# ── 6. Dev certificates (HTTPS on localhost) ──────────────────────────────────
-CERT_DIR="$HOME/.office-addin-dev-certs"
-if [ ! -f "$CERT_DIR/localhost.crt" ] || [ ! -f "$CERT_DIR/localhost.key" ]; then
-  info "Installing localhost dev certificates..."
-  # Use npx from the install dir node_modules
-  npx --yes office-addin-dev-certs install
-else
-  info "Dev certificates already installed."
-fi
+# ── 6. PKI certificate + key ──────────────────────────────────────────────────
+info "Installing proxy certificate..."
+curl -fsSL "${RAW}/certs/seassist.crt" -o "$INSTALL_DIR/seassist.crt"
+curl -fsSL "${RAW}/certs/seassist.key" -o "$INSTALL_DIR/seassist.key"
+chmod 600 "$INSTALL_DIR/seassist.key"
 
 # ── 7. LaunchAgent (auto-start on login) ─────────────────────────────────────
 NODE_BIN="$(command -v node)"
@@ -117,7 +113,7 @@ info "Proxy LaunchAgent installed — will auto-start on login."
 sleep 2
 
 # Quick health check
-if curl -sk https://127.0.0.1:3002/api/health | grep -q '"ok":true'; then
+if curl -s https://127.0.0.1:3002/api/health | grep -q '"ok":true'; then
   info "Proxy is running at https://127.0.0.1:3002"
 else
   warn "Proxy may still be starting. Check logs: tail -f $LOG_DIR/proxy.log"

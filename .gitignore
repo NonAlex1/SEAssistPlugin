@@ -4,5 +4,8 @@ proxy/node_modules/
 *.pem
 *.key
 *.crt
+# PKI cert/key bundled with the installer — localhost-scoped, safe to distribute
+!certs/seassist.crt
+!certs/seassist.key
 .env
 .DS_Store

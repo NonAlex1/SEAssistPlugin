@@ -143,8 +143,10 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = React.useState<Account | null>(null);
   const [accountSearch, setAccountSearch] = React.useState('');
+  const [accountDropdownOpen, setAccountDropdownOpen] = React.useState(false);
   const [opportunities, setOpportunities] = React.useState<Opportunity[]>([]);
   const [selectedOpportunity, setSelectedOpportunity] = React.useState<Opportunity | null>(null);
+  const searchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // UI state
   const [loadingContext, setLoadingContext] = React.useState(true);
@@ -194,29 +196,39 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
       .finally(() => setLoadingOpps(false));
   };
 
-  const handleAccountSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAccountSearch(e.target.value);
-    if (!e.target.value) {
-      setSelectedAccount(null);
-      setOpportunities([]);
-    }
-  };
-
-  const handleManualAccountSearch = async () => {
-    if (!accountSearch.trim()) return;
+  const runAccountSearch = async (query: string) => {
+    if (!query.trim()) return;
     setLoadingAccounts(true);
     try {
       const res = await fetch(
         `https://127.0.0.1:3002/api/sf/query?q=${encodeURIComponent(
-          `SELECT Id, Name, Website, BillingCity FROM Account WHERE Name LIKE '%${accountSearch}%' ORDER BY Name LIMIT 15`
+          `SELECT Id, Name, Website, BillingCity FROM Account WHERE Name LIKE '%${query}%' ORDER BY Name LIMIT 15`
         )}`
       );
       const data = await res.json();
-      setAccounts(data.records ?? []);
+      const records = data.records ?? [];
+      setAccounts(records);
+      if (records.length > 0) setAccountDropdownOpen(true);
     } catch {
       setError('Account search failed.');
     } finally {
       setLoadingAccounts(false);
+    }
+  };
+
+  const handleAccountSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setAccountSearch(val);
+    if (!val) {
+      setSelectedAccount(null);
+      setOpportunities([]);
+      setAccounts([]);
+      setAccountDropdownOpen(false);
+    }
+    // Debounce: fire search 400ms after user stops typing, once 5+ chars entered
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (val.trim().length >= 5) {
+      searchDebounceRef.current = setTimeout(() => runAccountSearch(val), 400);
     }
   };
 
@@ -284,15 +296,22 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
         </Field>
 
         {/* Account */}
-        <Field label="Account" hint={context?.externalDomains.length ? `Searched by: ${context.externalDomains.join(', ')}` : undefined}>
+        <Field
+          label="Account"
+          hint={context?.externalDomains.length ? `Searched by: ${context.externalDomains.join(', ')}` : undefined}
+        >
           <Combobox
-            placeholder={loadingAccounts ? 'Searching…' : 'Type name, press Enter to search…'}
+            placeholder={loadingAccounts ? 'Searching…' : 'Type 5+ chars to search…'}
             value={accountSearch}
+            open={accountDropdownOpen}
+            onOpenChange={(_e, d) => setAccountDropdownOpen(d.open)}
             onChange={handleAccountSearchChange}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleManualAccountSearch(); }}
             onOptionSelect={(_e, d) => {
               const acct = accounts.find((a) => a.Id === d.optionValue);
-              if (acct) handleAccountSelect(acct);
+              if (acct) {
+                handleAccountSelect(acct);
+                setAccountDropdownOpen(false);
+              }
             }}
           >
             {accounts.map((a) => (
@@ -301,11 +320,6 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
               </Option>
             ))}
           </Combobox>
-          {!loadingAccounts && (
-            <Button size="small" appearance="subtle" onClick={handleManualAccountSearch}>
-              Search by name
-            </Button>
-          )}
         </Field>
 
         {/* Opportunity */}

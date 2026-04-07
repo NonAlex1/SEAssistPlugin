@@ -77,9 +77,18 @@ if [ ! -x "$NODE_BIN" ]; then
   err "Cannot locate node binary at '$NODE_BIN'. Installation may be incomplete."
 fi
 
+echo "[debug] NODE_BIN=$NODE_BIN"
+echo "[debug] INSTALL_DIR=$INSTALL_DIR"
+echo "[debug] LOG_DIR=$LOG_DIR"
+echo "[debug] PLIST_PATH=$PLIST_PATH"
+echo "[debug] HOME=$HOME"
+echo "[debug] server.js exists: $(test -f "$INSTALL_DIR/server.js" && echo YES || echo NO)"
+echo "[debug] logs dir exists:  $(test -d "$LOG_DIR" && echo YES || echo NO)"
+
 # Unload old agent if present
 if launchctl list | grep -q "$PLIST_LABEL" 2>/dev/null; then
-  launchctl unload "$PLIST_PATH" 2>/dev/null || true
+  echo "[debug] Unloading existing LaunchAgent..."
+  launchctl unload "$PLIST_PATH" 2>&1 || true
 fi
 
 cat > "$PLIST_PATH" <<PLIST
@@ -115,7 +124,11 @@ cat > "$PLIST_PATH" <<PLIST
 </plist>
 PLIST
 
-launchctl load "$PLIST_PATH"
+echo "[debug] Plist written. Contents:"
+cat "$PLIST_PATH"
+echo "[debug] Running: launchctl load $PLIST_PATH"
+launchctl load "$PLIST_PATH" 2>&1
+echo "[debug] launchctl exit code: $?"
 info "Proxy LaunchAgent installed — will auto-start on login."
 
 # Give the server a moment to start

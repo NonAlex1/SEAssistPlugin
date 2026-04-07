@@ -132,7 +132,7 @@ try {
 }
 
 # ── 7. Download manifest ──────────────────────────────────────────────────────
-Invoke-WebRequest "$RAW/manifest.prod.xml" -OutFile $MANIFEST -UseBasicParsing
+Invoke-WebRequest "https://nonalex1.github.io/SEAssistPlugin/manifest.xml" -OutFile $MANIFEST -UseBasicParsing
 Write-OK "Manifest saved to $MANIFEST"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ Write-Host "  2. Click  Get Add-ins -> My Add-ins"
 Write-Host "     -> Add a custom add-in -> Add from URL"
 Write-Host "  3. Paste:"
 Write-Host ""
-Write-Host "     https://raw.githubusercontent.com/$REPO/main/manifest.prod.xml" -ForegroundColor Yellow
+Write-Host "     https://nonalex1.github.io/SEAssistPlugin/manifest.xml" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  -- Option B: Add from file (if URL is grayed out) --" -ForegroundColor Cyan
 Write-Host "  1. Open Outlook (desktop or outlook.office.com)"

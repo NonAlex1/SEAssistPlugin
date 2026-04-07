@@ -128,7 +128,7 @@ fi
 
 # ── Download manifest to Downloads folder ─────────────────────────────────────
 MANIFEST_DEST="$HOME/Downloads/seassist-manifest.xml"
-curl -fsSL "${RAW}/manifest.prod.xml" -o "$MANIFEST_DEST"
+curl -fsSL "https://nonalex1.github.io/SEAssistPlugin/manifest.xml" -o "$MANIFEST_DEST"
 info "Manifest saved to $MANIFEST_DEST"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ echo "  2. Click  Get Add-ins  →  My Add-ins"
 echo "     →  Add a custom add-in  →  Add from URL"
 echo "  3. Paste:"
 echo ""
-echo "     https://raw.githubusercontent.com/${REPO}/main/manifest.prod.xml"
+echo "     https://nonalex1.github.io/SEAssistPlugin/manifest.xml"
 echo ""
 echo "  ── Option B: Add from file (if URL option is grayed out) ─"
 echo "  1. Open Outlook (desktop or outlook.office.com)"

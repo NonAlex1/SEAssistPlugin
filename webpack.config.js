@@ -48,6 +48,9 @@ module.exports = async (env, argv) => {
       new CopyWebpackPlugin({
         patterns: [
           { from: 'assets', to: 'assets', noErrorOnMissing: true },
+          // Deploy production manifest to GitHub Pages so Outlook receives
+          // application/xml content-type instead of raw.githubusercontent.com's text/plain
+          { from: 'manifest.prod.xml', to: 'manifest.xml' },
         ],
       }),
     ],

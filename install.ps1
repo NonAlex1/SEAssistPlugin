@@ -83,6 +83,41 @@ Write-OK "Installing proxy certificate..."
 Invoke-WebRequest "$RAW/certs/seassist.crt" -OutFile "$INSTALL\seassist.crt" -UseBasicParsing
 Invoke-WebRequest "$RAW/certs/seassist.key" -OutFile "$INSTALL\seassist.key" -UseBasicParsing
 
+# ── 5a. CA trust check ────────────────────────────────────────────────────────
+$CA_ISSUING_URL = "http://pki.extremenetworks.com/CertEnroll/usnc-pki-p5.corp.extremenetworks.com_Extreme%20Networks%20PKI%20Issuing%20CA(3).crt"
+$CA_ROOT_URL    = "http://pki.extremenetworks.com/CertEnroll/usnc-pki-p4_Extreme%20Networks%20PKI%20Root(1).crt"
+
+$cert  = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2("$INSTALL\seassist.crt")
+$chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+$trusted = $chain.Build($cert)
+
+if ($trusted) {
+    Write-OK "CA certificate chain already trusted."
+} else {
+    Write-Warn "CA certificates not in trust store — installing..."
+
+    # Intermediate CA → CurrentUser\CA (no admin required)
+    Invoke-WebRequest $CA_ISSUING_URL -OutFile "$env:TEMP\extreme-issuing-ca.crt" -UseBasicParsing
+    Import-Certificate -FilePath "$env:TEMP\extreme-issuing-ca.crt" `
+        -CertStoreLocation Cert:\CurrentUser\CA | Out-Null
+
+    # Root CA → CurrentUser\Root (shows a confirmation dialog, no admin required)
+    Invoke-WebRequest $CA_ROOT_URL -OutFile "$env:TEMP\extreme-root-ca.crt" -UseBasicParsing
+    Import-Certificate -FilePath "$env:TEMP\extreme-root-ca.crt" `
+        -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
+
+    Remove-Item "$env:TEMP\extreme-issuing-ca.crt","$env:TEMP\extreme-root-ca.crt" -ErrorAction SilentlyContinue
+
+    # Verify the chain now validates
+    $chain2   = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+    $trusted2 = $chain2.Build($cert)
+    if ($trusted2) {
+        Write-OK "CA certificates installed and trusted."
+    } else {
+        Write-Warn "CA trust installation may require a reboot to take effect."
+    }
+}
+
 # ── 6. Scheduled Task (auto-start on login) ───────────────────────────────────
 $nodePath = (Get-Command node).Source
 

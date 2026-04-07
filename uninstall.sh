@@ -17,9 +17,8 @@ echo "  SE Assist — uninstaller"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Stop and remove LaunchAgent
-if launchctl list | grep -q "$PLIST_LABEL" 2>/dev/null; then
-  launchctl unload "$PLIST_PATH" 2>/dev/null || true
+# Stop and remove LaunchAgent (modern bootout API — no deprecation warning)
+if launchctl bootout "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null; then
   info "Proxy stopped."
 else
   warn "Proxy was not running."

@@ -2,7 +2,7 @@
 # SE Assist for Outlook — macOS installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/NonAlex1/SEAssistPlugin/main/install.sh | bash
 
-set -euxo pipefail   # -x traces every command — remove after debugging
+set -euo pipefail
 
 REPO="NonAlex1/SEAssistPlugin"
 INSTALL_DIR="$HOME/.seassist"
@@ -77,19 +77,8 @@ if [ ! -x "$NODE_BIN" ]; then
   err "Cannot locate node binary at '$NODE_BIN'. Installation may be incomplete."
 fi
 
-echo "[debug] NODE_BIN=$NODE_BIN"
-echo "[debug] INSTALL_DIR=$INSTALL_DIR"
-echo "[debug] LOG_DIR=$LOG_DIR"
-echo "[debug] PLIST_PATH=$PLIST_PATH"
-echo "[debug] HOME=$HOME"
-echo "[debug] server.js exists: $(test -f "$INSTALL_DIR/server.js" && echo YES || echo NO)"
-echo "[debug] logs dir exists:  $(test -d "$LOG_DIR" && echo YES || echo NO)"
-
-# Unload old agent if present
-if launchctl list | grep -q "$PLIST_LABEL" 2>/dev/null; then
-  echo "[debug] Unloading existing LaunchAgent..."
-  launchctl unload "$PLIST_PATH" 2>&1 || true
-fi
+# Remove old agent if present (use modern bootout API — avoids deprecation warning)
+launchctl bootout "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null || true
 
 cat > "$PLIST_PATH" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -124,11 +113,7 @@ cat > "$PLIST_PATH" <<PLIST
 </plist>
 PLIST
 
-echo "[debug] Plist written. Contents:"
-cat "$PLIST_PATH"
-echo "[debug] Running: launchctl load $PLIST_PATH"
-launchctl load "$PLIST_PATH" 2>&1
-echo "[debug] launchctl exit code: $?"
+launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
 info "Proxy LaunchAgent installed — will auto-start on login."
 
 # Give the server a moment to start

@@ -5,6 +5,41 @@ const fs = require('fs');
 const path = require('path');
 const { execFile, exec } = require('child_process');
 
+// ── Self-update ───────────────────────────────────────────────────────────────
+// Increment this integer each time proxy/server.js is changed.
+// The update checker reads this value from the raw GitHub file to decide
+// whether to apply an update.
+const VERSION = 2;
+const UPDATE_URL = 'https://raw.githubusercontent.com/NonAlex1/SEAssistPlugin/main/proxy/server.js';
+
+function checkForUpdate() {
+  https.get(UPDATE_URL, (res) => {
+    let body = '';
+    res.on('data', (chunk) => { body += chunk; });
+    res.on('end', () => {
+      const match = body.match(/^const VERSION = (\d+)/m);
+      if (!match) return;
+      const remote = parseInt(match[1], 10);
+      if (remote <= VERSION) return;
+      console.log(`[update] New version available (${VERSION} → ${remote}). Applying…`);
+      // Write to a temp file first, then replace atomically to avoid
+      // corrupting the file if the process is killed mid-write.
+      const tmp = __filename + '.tmp';
+      try {
+        fs.writeFileSync(tmp, body, 'utf8');
+        fs.renameSync(tmp, __filename);
+        console.log('[update] Update applied. Restarting…');
+        process.exit(0); // Scheduled task (RestartCount=3) will restart us
+      } catch (e) {
+        console.error('[update] Failed to write update:', e.message);
+        try { fs.unlinkSync(tmp); } catch {}
+      }
+    });
+  }).on('error', (err) => {
+    console.error('[update] Check failed:', err.message);
+  });
+}
+
 const SF_ORG_ALIAS = 'seassist-plugin';
 const SF_INSTANCE_URL = 'https://extremesaas.my.salesforce.com';
 
@@ -236,6 +271,10 @@ const httpsServer = require('https').createServer(
 );
 
 httpsServer.listen(PORT, '127.0.0.1', () => {
-  console.log(`SE Assist proxy listening on https://127.0.0.1:${PORT}`);
+  console.log(`SE Assist proxy v${VERSION} listening on https://127.0.0.1:${PORT}`);
   console.log(`Authenticated: ${!!sessionToken}`);
+
+  // Check for update 10 s after startup (non-blocking), then every 6 hours
+  setTimeout(checkForUpdate, 10_000);
+  setInterval(checkForUpdate, 6 * 60 * 60 * 1000);
 });

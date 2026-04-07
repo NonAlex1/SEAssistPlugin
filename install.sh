@@ -2,7 +2,7 @@
 # SE Assist for Outlook — macOS installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/NonAlex1/SEAssistPlugin/main/install.sh | bash
 
-set -euo pipefail
+set -euxo pipefail   # -x traces every command — remove after debugging
 
 REPO="NonAlex1/SEAssistPlugin"
 INSTALL_DIR="$HOME/.seassist"

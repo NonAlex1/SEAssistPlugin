@@ -24,8 +24,12 @@ Write-Host "================================================" -ForegroundColor C
 Write-Host ""
 
 # ── Execution policy ─────────────────────────────────────────────────────────
+# Always unlock the current process first (required so npm.ps1 / npx.ps1 can
+# run inside this very session, regardless of machine/user scope settings).
+Set-ExecutionPolicy RemoteSigned -Scope Process -Force
+
 $policy = Get-ExecutionPolicy -Scope CurrentUser
-if ($policy -eq 'Restricted') {
+if ($policy -in 'Restricted', 'Undefined') {
     Write-Warn "Setting PowerShell execution policy to RemoteSigned for current user..."
     Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 }

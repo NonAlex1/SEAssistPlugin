@@ -178,6 +178,16 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
             })
             .catch((e) => { if (e instanceof SessionExpiredError) onSessionExpired(); })
             .finally(() => setLoadingAccounts(false));
+        } else {
+          // All participants are @extremenetworks.com — pre-select Extreme Networks Corp
+          const extremeAccount: Account = {
+            Id: '0015e00000sCZR0AAO',
+            Name: 'Extreme Networks Corp',
+            Website: 'extremenetworks.com',
+            BillingCity: '',
+          };
+          setAccounts([extremeAccount]);
+          handleAccountSelect(extremeAccount);
         }
       })
       .catch(() => {}) // non-fatal

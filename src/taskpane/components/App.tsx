@@ -26,6 +26,7 @@ export const App: React.FC = () => {
   const styles = useStyles();
   const [state, setState] = React.useState<AppState>('loading');
   const [sfCliAvailable, setSfCliAvailable] = React.useState(false);
+  const [proxyPlatform, setProxyPlatform] = React.useState('');
 
   const bootstrap = React.useCallback(async () => {
     setState('loading');
@@ -35,6 +36,7 @@ export const App: React.FC = () => {
       return;
     }
     setSfCliAvailable(!!health.sfCliAvailable);
+    setProxyPlatform(health.platform ?? '');
     if (health.authenticated) {
       setState('ready');
       return;
@@ -103,7 +105,7 @@ export const App: React.FC = () => {
     <FluentProvider theme={webLightTheme}>
       <div className={styles.root}>
         {state === 'auth' ? (
-          <AuthSetup sfCliAvailable={sfCliAvailable} onAuthenticated={() => setState('ready')} />
+          <AuthSetup sfCliAvailable={sfCliAvailable} platform={proxyPlatform} onAuthenticated={() => setState('ready')} />
         ) : (
           <SEAssistForm onSignOut={handleSignOut} onSessionExpired={handleSessionExpired} />
         )}

@@ -47,10 +47,11 @@ const useStyles = makeStyles({
 
 interface AuthSetupProps {
   sfCliAvailable: boolean;
+  platform: string;
   onAuthenticated: () => void;
 }
 
-export const AuthSetup: React.FC<AuthSetupProps> = ({ sfCliAvailable, onAuthenticated }) => {
+export const AuthSetup: React.FC<AuthSetupProps> = ({ sfCliAvailable, platform, onAuthenticated }) => {
   const styles = useStyles();
 
   // SF CLI OAuth flow state
@@ -139,7 +140,9 @@ export const AuthSetup: React.FC<AuthSetupProps> = ({ sfCliAvailable, onAuthenti
             For seamless SSO login, install the Salesforce CLI first:
           </Text>
           <Text size={200} style={{ fontFamily: 'monospace', background: tokens.colorNeutralBackground3, padding: '8px', borderRadius: '4px' }}>
-            brew install sf
+            {platform === 'win32'
+              ? 'npm install -g @salesforce/cli'
+              : 'brew install sf'}
           </Text>
           <Text size={200}>Then restart the proxy and reload the add-in.</Text>
         </div>

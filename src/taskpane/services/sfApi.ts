@@ -26,7 +26,7 @@ export interface Opportunity extends SfRecord {
 
 // ── Proxy health / auth ─────────────────────────────────────────────────────
 
-export async function checkProxyHealth(): Promise<{ ok: boolean; authenticated: boolean; sfCliAvailable?: boolean }> {
+export async function checkProxyHealth(): Promise<{ ok: boolean; authenticated: boolean; sfCliAvailable?: boolean; platform?: string }> {
   try {
     const res = await fetch(`${PROXY_BASE}/api/health`);
     if (!res.ok) return { ok: false, authenticated: false };

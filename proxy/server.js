@@ -8,15 +8,20 @@ const { execFile, exec } = require('child_process');
 const SF_ORG_ALIAS = 'seassist-plugin';
 const SF_INSTANCE_URL = 'https://extremesaas.my.salesforce.com';
 
-// Find sf CLI binary
+// Find sf CLI binary (cross-platform)
 function findSfCli() {
-  const candidates = [
-    '/opt/homebrew/bin/sf',
-    '/usr/local/bin/sf',
-    '/usr/bin/sf',
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
+  const { spawnSync } = require('child_process');
+  const isWin = process.platform === 'win32';
+  // On Windows, npm-installed CLIs live as <name>.cmd on PATH
+  const sfExe = isWin ? 'sf.cmd' : 'sf';
+  const probe = spawnSync(sfExe, ['--version'], { stdio: 'ignore', shell: isWin, timeout: 5000 });
+  if (probe.status === 0) return sfExe;
+
+  // Unix: also check known install paths (Homebrew, system)
+  if (!isWin) {
+    for (const c of ['/opt/homebrew/bin/sf', '/usr/local/bin/sf', '/usr/bin/sf']) {
+      if (fs.existsSync(c)) return c;
+    }
   }
   return null;
 }
@@ -26,7 +31,7 @@ function getSfToken(sfBin) {
   return new Promise((resolve, reject) => {
     // NO_COLOR + TERM=dumb prevent sf from injecting ANSI escape codes into --json output
     const env = { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0', TERM: 'dumb' };
-    execFile(sfBin, ['org', 'display', '--target-org', SF_ORG_ALIAS, '--json'], { env }, (err, stdout, stderr) => {
+    execFile(sfBin, ['org', 'display', '--target-org', SF_ORG_ALIAS, '--json'], { env, shell: process.platform === 'win32' }, (err, stdout, stderr) => {
       try {
         // 1. Strip all ANSI/VT escape sequences (e.g. \x1b[0m injected by sf)
         // 2. Strip BOM (\uFEFF) and other C0/C1 control chars except \t \n \r
@@ -97,7 +102,7 @@ app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
   const sfBin = findSfCli();
-  res.json({ ok: true, authenticated: !!sessionToken, sfCliAvailable: !!sfBin });
+  res.json({ ok: true, authenticated: !!sessionToken, sfCliAvailable: !!sfBin, platform: process.platform });
 });
 
 // ── SF CLI OAuth flow ───────────────────────────────────────────────────────
@@ -127,7 +132,7 @@ app.post('/api/login/start', async (_req, res) => {
     '--instance-url', SF_INSTANCE_URL,
     '--alias', SF_ORG_ALIAS,
     '--json',
-  ], async (err, stdout, stderr) => {
+  ], { shell: process.platform === 'win32' }, async (err, stdout, stderr) => {
     if (err) {
       console.error('sf org login web failed:', stderr);
       loginInProgress = false;

@@ -73,7 +73,24 @@ if (fs.existsSync(TOKEN_FILE)) {
   } catch (_) {}
 }
 
-app.use(cors({ origin: ['https://localhost:3000', 'https://127.0.0.1:3000'] }));
+const ALLOWED_ORIGINS = [
+  'https://localhost:3000',
+  'https://127.0.0.1:3000',
+  'https://nonalex1.github.io',
+];
+
+app.use(cors({
+  origin: ALLOWED_ORIGINS,
+  credentials: true,
+}));
+
+// Allow private network access from public GitHub Pages origin
+// (Chrome's Private Network Access policy blocks public→private requests without this)
+app.use((_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  next();
+});
+
 app.use(express.json());
 
 // ── Auth endpoints ──────────────────────────────────────────────────────────

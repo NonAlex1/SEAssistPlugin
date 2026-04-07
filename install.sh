@@ -23,11 +23,17 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ── 1. Homebrew ───────────────────────────────────────────────────────────────
+# Always inject Homebrew into PATH — covers both Apple Silicon and Intel,
+# and ensures tools installed during THIS run are immediately visible.
+eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || \
+  eval "$(/usr/local/bin/brew shellenv)"  2>/dev/null || true
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 if ! command -v brew &>/dev/null; then
   warn "Homebrew not found — installing..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  # Add brew to PATH for Apple Silicon
   eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || true
+  export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 fi
 info "Homebrew: $(brew --version | head -1)"
 
@@ -66,7 +72,10 @@ curl -fsSL "${RAW}/certs/seassist.key" -o "$INSTALL_DIR/seassist.key"
 chmod 600 "$INSTALL_DIR/seassist.key"
 
 # ── 7. LaunchAgent (auto-start on login) ─────────────────────────────────────
-NODE_BIN="$(command -v node)"
+NODE_BIN="$(command -v node 2>/dev/null || echo /opt/homebrew/bin/node)"
+if [ ! -x "$NODE_BIN" ]; then
+  err "Cannot locate node binary at '$NODE_BIN'. Installation may be incomplete."
+fi
 
 # Unload old agent if present
 if launchctl list | grep -q "$PLIST_LABEL" 2>/dev/null; then

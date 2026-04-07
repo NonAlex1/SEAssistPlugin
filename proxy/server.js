@@ -9,7 +9,7 @@ const { execFile, exec } = require('child_process');
 // Increment this integer each time proxy/server.js is changed.
 // The update checker reads this value from the raw GitHub file to decide
 // whether to apply an update.
-const VERSION = 2;
+const VERSION = 3;
 const UPDATE_URL = 'https://raw.githubusercontent.com/NonAlex1/SEAssistPlugin/main/proxy/server.js';
 
 function checkForUpdate() {
@@ -254,14 +254,15 @@ app.use('/api/sf', (req, res) => {
   sfReq.end();
 });
 
-// ── Start (HTTPS using office-addin-dev-certs) ──────────────────────────────
+// ── Start (HTTPS using PKI-signed certificate) ──────────────────────────────
 
-const CERT_DIR = path.join(require('os').homedir(), '.office-addin-dev-certs');
-const certFile = path.join(CERT_DIR, 'localhost.crt');
-const keyFile  = path.join(CERT_DIR, 'localhost.key');
+const PROXY_DIR = path.join(require('os').homedir(), '.seassist');
+const certFile  = path.join(PROXY_DIR, 'seassist.crt');
+const keyFile   = path.join(PROXY_DIR, 'seassist.key');
 
 if (!fs.existsSync(certFile) || !fs.existsSync(keyFile)) {
-  console.error('Dev certs not found. Run: npm run install-certs (from project root)');
+  console.error(`Certificate or key not found in ${PROXY_DIR}.`);
+  console.error('Expected: seassist.crt and seassist.key');
   process.exit(1);
 }
 

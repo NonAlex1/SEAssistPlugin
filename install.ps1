@@ -124,13 +124,13 @@ $nodePath = (Get-Command node).Source
 # Write a tiny VBScript launcher — wscript.exe is a GUI subsystem host so it
 # never creates a console window or taskbar button.  Shell.Run with style 0
 # makes the child process (node) fully invisible too.
+# Use ASCII (no BOM) — VBScript compilation fails on UTF-8 BOM.
 $vbsPath = "$INSTALL\run-proxy.vbs"
-@"
-Dim WshShell
-Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run Chr(34) & WScript.Arguments(0) & Chr(34) & " " & _
-             Chr(34) & WScript.Arguments(1) & Chr(34), 0, False
-"@ | Set-Content -Path $vbsPath -Encoding UTF8
+$vbsLines = @(
+    'Set sh = CreateObject("WScript.Shell")',
+    'sh.Run Chr(34) & WScript.Arguments(0) & Chr(34) & " " & Chr(34) & WScript.Arguments(1) & Chr(34), 0, False'
+)
+[System.IO.File]::WriteAllLines($vbsPath, $vbsLines, [System.Text.Encoding]::ASCII)
 
 # Remove old task if present
 if (Get-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue) {

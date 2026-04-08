@@ -18,15 +18,38 @@ Write-Host ""
 if (Get-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue) {
     Stop-ScheduledTask  -TaskName $TASK -ErrorAction SilentlyContinue
     Unregister-ScheduledTask -TaskName $TASK -Confirm:$false
-    Write-OK "Proxy stopped and scheduled task removed."
+    Write-OK "Scheduled task removed."
 } else {
     Write-Warn "Proxy task was not found."
 }
 
+# Kill any node.exe process running server.js from the install directory.
+# Stop-ScheduledTask only kills wscript.exe (the launcher); node.exe was
+# spawned as a detached independent process and keeps running, holding
+# file handles on the install folder — Remove-Item fails until it is gone.
+$serverJs = "$INSTALL\server.js"
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {
+    try { $_.MainModule.FileName } catch { $null }   # filter accessible processes
+    $true
+} | ForEach-Object {
+    # Check command line for our server.js path
+    $cmdline = (Get-WmiObject Win32_Process -Filter "ProcessId=$($_.Id)" -ErrorAction SilentlyContinue).CommandLine
+    if ($cmdline -like "*server.js*" -and $cmdline -like "*.seassist*") {
+        Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+        Write-OK "Proxy process (PID $($_.Id)) terminated."
+    }
+}
+# Give the OS a moment to release file handles
+Start-Sleep -Milliseconds 500
+
 # Remove install directory
 if (Test-Path $INSTALL) {
-    Remove-Item -Recurse -Force $INSTALL
-    Write-OK "Proxy files removed ($INSTALL)."
+    Remove-Item -Recurse -Force $INSTALL -ErrorAction SilentlyContinue
+    if (Test-Path $INSTALL) {
+        Write-Warn "Could not fully remove $INSTALL (a file may still be locked). Please delete it manually."
+    } else {
+        Write-OK "Proxy files removed ($INSTALL)."
+    }
 }
 
 Write-Host ""

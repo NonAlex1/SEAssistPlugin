@@ -127,9 +127,10 @@ if (Get-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue) {
     Unregister-ScheduledTask -TaskName $TASK -Confirm:$false
 }
 
+# Launch via PowerShell with -WindowStyle Hidden so no CMD window appears
 $action   = New-ScheduledTaskAction `
-                -Execute $nodePath `
-                -Argument "`"$INSTALL\server.js`"" `
+                -Execute "powershell.exe" `
+                -Argument "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command `"& '$nodePath' '$INSTALL\server.js'`"" `
                 -WorkingDirectory $INSTALL
 
 $trigger  = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME

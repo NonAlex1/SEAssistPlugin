@@ -43,11 +43,16 @@ function Refresh-Path {
 # ── 1. Node.js ────────────────────────────────────────────────────────────────
 Refresh-Path
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Write-Warn "Node.js not found — installing via winget..."
-    winget install --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements -e
+    Write-Warn "Node.js not found — installing via winget (user scope, no admin required)..."
+    # --scope user installs to %LOCALAPPDATA%\Programs — no admin needed.
+    winget install --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements -e --scope user
     Refresh-Path
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-        Write-Err "Node.js install failed. Install manually from https://nodejs.org then re-run this script."
+        Write-Err @"
+Node.js install failed.
+If you do not have administrator rights, ask IT to install Node.js LTS, then re-run this script.
+Download: https://nodejs.org
+"@
     }
 }
 Write-OK "Node.js: $(node --version)"
@@ -55,8 +60,14 @@ Write-OK "Node.js: $(node --version)"
 # ── 2. Salesforce CLI ─────────────────────────────────────────────────────────
 Refresh-Path
 if (-not (Get-Command sf -ErrorAction SilentlyContinue)) {
-    Write-Warn "Salesforce CLI not found — installing via npm..."
-    npm install -g @salesforce/cli --silent
+    Write-Warn "Salesforce CLI not found — installing via npm (user scope, no admin required)..."
+    # Use an explicit user-writable prefix (%APPDATA%\npm) so this works even
+    # when Node itself was installed system-wide in Program Files.
+    $npmGlobal = "$env:APPDATA\npm"
+    New-Item -ItemType Directory -Force -Path $npmGlobal | Out-Null
+    npm install -g @salesforce/cli --prefix $npmGlobal --silent
+    # Ensure the user npm bin dir is on PATH for this session
+    if ($env:PATH -notlike "*$npmGlobal*") { $env:PATH = "$npmGlobal;$env:PATH" }
     Refresh-Path
     if (-not (Get-Command sf -ErrorAction SilentlyContinue)) {
         Write-Err "Salesforce CLI install failed. Install manually from https://developer.salesforce.com/tools/salesforcecli then re-run."
@@ -101,10 +112,23 @@ if ($trusted) {
     Import-Certificate -FilePath "$env:TEMP\extreme-issuing-ca.crt" `
         -CertStoreLocation Cert:\CurrentUser\CA | Out-Null
 
-    # Root CA → CurrentUser\Root (shows a confirmation dialog, no admin required)
+    # Root CA → CurrentUser\Root
+    # Windows shows a security confirmation dialog here — click Yes.
+    # On some corporate machines a GPO blocks this; if so, IT must deploy the
+    # Extreme Networks Root CA via Group Policy instead.
     Invoke-WebRequest $CA_ROOT_URL -OutFile "$env:TEMP\extreme-root-ca.crt" -UseBasicParsing
-    Import-Certificate -FilePath "$env:TEMP\extreme-root-ca.crt" `
-        -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
+    try {
+        Import-Certificate -FilePath "$env:TEMP\extreme-root-ca.crt" `
+            -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
+    } catch {
+        Write-Warn @"
+Could not install Extreme Networks Root CA to your trust store.
+This is sometimes blocked by corporate Group Policy.
+Please ask IT to deploy the Extreme Networks PKI Root CA via GPO, or
+open certmgr.msc and import manually:
+  $env:TEMP\extreme-root-ca.crt  →  Trusted Root Certification Authorities
+"@
+    }
 
     Remove-Item "$env:TEMP\extreme-issuing-ca.crt","$env:TEMP\extreme-root-ca.crt" -ErrorAction SilentlyContinue
 
@@ -114,7 +138,7 @@ if ($trusted) {
     if ($trusted2) {
         Write-OK "CA certificates installed and trusted."
     } else {
-        Write-Warn "CA trust installation may require a reboot to take effect."
+        Write-Warn "CA trust installation may require a reboot or manual IT action to take effect."
     }
 }
 

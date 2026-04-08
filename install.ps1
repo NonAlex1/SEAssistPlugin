@@ -80,6 +80,20 @@ Write-OK "Installing proxy to $INSTALL ..."
 New-Item -ItemType Directory -Force -Path $INSTALL | Out-Null
 New-Item -ItemType Directory -Force -Path $LOGS    | Out-Null
 
+# Kill any running proxy node.exe before overwriting files.
+# wscript.exe launches node as a detached process; Stop-ScheduledTask does
+# not reach it. Overwriting server.js while node has it open can produce a
+# corrupted file on Windows.
+Get-Process -Name "node" -ErrorAction SilentlyContinue | ForEach-Object {
+    $cmdline = (Get-WmiObject Win32_Process -Filter "ProcessId=$($_.Id)" `
+                    -ErrorAction SilentlyContinue).CommandLine
+    if ($cmdline -like "*server.js*" -and $cmdline -like "*.seassist*") {
+        Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+        Write-Warn "Stopped running proxy process (PID $($_.Id))."
+    }
+}
+Start-Sleep -Milliseconds 500
+
 Invoke-WebRequest "$RAW/proxy/server.js"    -OutFile "$INSTALL\server.js"    -UseBasicParsing
 Invoke-WebRequest "$RAW/proxy/package.json" -OutFile "$INSTALL\package.json" -UseBasicParsing
 

@@ -16,9 +16,20 @@ Write-Host ""
 
 # Stop and remove scheduled task
 if (Get-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue) {
-    Stop-ScheduledTask  -TaskName $TASK -ErrorAction SilentlyContinue
-    Unregister-ScheduledTask -TaskName $TASK -Confirm:$false
-    Write-OK "Scheduled task removed."
+    Stop-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue
+    try {
+        Unregister-ScheduledTask -TaskName $TASK -Confirm:$false -ErrorAction Stop
+        Write-OK "Scheduled task removed."
+    } catch {
+        Write-Warn @"
+Could not remove scheduled task '$TASK' (Access Denied).
+It was likely created by an Administrator account.
+To remove it, either:
+  - Open Task Scheduler (taskschd.msc), find '$TASK' and delete it manually, or
+  - Run this uninstaller once in an elevated (Administrator) PowerShell.
+Continuing with file removal...
+"@
+    }
 } else {
     Write-Warn "Proxy task was not found."
 }

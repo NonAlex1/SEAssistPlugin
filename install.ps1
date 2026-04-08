@@ -121,16 +121,27 @@ if ($trusted) {
 # ── 6. Scheduled Task (auto-start on login) ───────────────────────────────────
 $nodePath = (Get-Command node).Source
 
+# Write a tiny VBScript launcher — wscript.exe is a GUI subsystem host so it
+# never creates a console window or taskbar button.  Shell.Run with style 0
+# makes the child process (node) fully invisible too.
+$vbsPath = "$INSTALL\run-proxy.vbs"
+@"
+Dim WshShell
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run Chr(34) & WScript.Arguments(0) & Chr(34) & " " & _
+             Chr(34) & WScript.Arguments(1) & Chr(34), 0, False
+"@ | Set-Content -Path $vbsPath -Encoding UTF8
+
 # Remove old task if present
 if (Get-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue) {
     Stop-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue
     Unregister-ScheduledTask -TaskName $TASK -Confirm:$false
 }
 
-# Launch via PowerShell with -WindowStyle Hidden so no CMD window appears
+# Launch via wscript.exe → VBS → node (completely hidden, no taskbar entry)
 $action   = New-ScheduledTaskAction `
-                -Execute "powershell.exe" `
-                -Argument "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command `"& '$nodePath' '$INSTALL\server.js'`"" `
+                -Execute "wscript.exe" `
+                -Argument "`"$vbsPath`" `"$nodePath`" `"$INSTALL\server.js`"" `
                 -WorkingDirectory $INSTALL
 
 $trigger  = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME

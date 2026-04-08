@@ -156,10 +156,16 @@ $vbsLines = @(
 )
 [System.IO.File]::WriteAllLines($vbsPath, $vbsLines, [System.Text.Encoding]::ASCII)
 
-# Remove old task if present
+# Remove old task if present.
+# This can fail with Access Denied (0x80070005) if the task was previously
+# created under a different account or with elevation — catch and continue.
 if (Get-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue) {
     Stop-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue
-    Unregister-ScheduledTask -TaskName $TASK -Confirm:$false
+    try {
+        Unregister-ScheduledTask -TaskName $TASK -Confirm:$false -ErrorAction Stop
+    } catch {
+        Write-Warn "Could not remove old task (owned by another account). Will try to overwrite it..."
+    }
 }
 
 # Launch via wscript.exe → VBS → node (completely hidden, no taskbar entry)
@@ -181,13 +187,27 @@ $principal = New-ScheduledTaskPrincipal `
                 -LogonType Interactive `
                 -RunLevel Limited
 
-Register-ScheduledTask `
-    -TaskName  $TASK `
-    -Action    $action `
-    -Trigger   $trigger `
-    -Settings  $settings `
-    -Principal $principal `
-    -Force | Out-Null
+try {
+    Register-ScheduledTask `
+        -TaskName  $TASK `
+        -Action    $action `
+        -Trigger   $trigger `
+        -Settings  $settings `
+        -Principal $principal `
+        -Force -ErrorAction Stop | Out-Null
+} catch {
+    Write-Warn @"
+Could not register the scheduled task (HRESULT: $($_.Exception.HResult)).
+The existing task may be owned by an Administrator account.
+
+To fix this, ask IT or run once as Administrator:
+  Unregister-ScheduledTask -TaskName '$TASK' -Confirm:`$false
+
+Then re-run this installer as your normal user.
+Alternatively, open Task Scheduler, delete '$TASK', and re-run.
+"@
+    exit 1
+}
 
 # Start it now without waiting for next login
 Start-ScheduledTask -TaskName $TASK

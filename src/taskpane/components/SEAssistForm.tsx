@@ -311,7 +311,7 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
           hint={context?.externalDomains.length ? `Searched by: ${context.externalDomains.join(', ')}` : undefined}
         >
           <Combobox
-            placeholder={loadingAccounts ? 'Searching…' : 'Type 5+ chars to search…'}
+            placeholder={loadingAccounts ? 'Searching…' : 'Type 3+ chars to search…'}
             value={accountSearch}
             open={accountDropdownOpen}
             onOpenChange={(_e, d) => setAccountDropdownOpen(d.open)}

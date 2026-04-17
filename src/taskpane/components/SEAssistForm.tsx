@@ -235,9 +235,9 @@ export const SEAssistForm: React.FC<Props> = ({ onSignOut, onSessionExpired }) =
       setAccounts([]);
       setAccountDropdownOpen(false);
     }
-    // Debounce: fire search 400ms after user stops typing, once 5+ chars entered
+    // Debounce: fire search 400ms after user stops typing, once 3+ chars entered
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    if (val.trim().length >= 5) {
+    if (val.trim().length >= 3) {
       searchDebounceRef.current = setTimeout(() => runAccountSearch(val), 400);
     }
   };

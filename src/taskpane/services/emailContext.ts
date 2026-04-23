@@ -3,12 +3,16 @@
 
 const INTERNAL_DOMAIN = 'extremenetworks.com';
 
+// Matches standard email addresses including those inside angle brackets
+// e.g.  customer@company.com  or  "Jane Doe" <customer@company.com>
+const EMAIL_REGEX = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
 export interface ItemContext {
   type: 'message' | 'appointment';
   subject: string;
   date: string;           // ISO date string YYYY-MM-DD
   body: string;           // plain-text body (async)
-  participants: string[]; // all external email addresses
+  participants: string[]; // all external email addresses (header + body)
   externalDomains: string[];
 }
 
@@ -25,7 +29,8 @@ function isInternal(email: string): boolean {
   return domain === INTERNAL_DOMAIN || domain === '';
 }
 
-function collectEmails(item: Office.MessageRead | Office.AppointmentRead): string[] {
+/** Collect addresses from the message/appointment header fields only */
+function collectHeaderEmails(item: Office.MessageRead | Office.AppointmentRead): string[] {
   const emails: string[] = [];
 
   if (item.itemType === Office.MailboxEnums.ItemType.Message) {
@@ -44,7 +49,18 @@ function collectEmails(item: Office.MessageRead | Office.AppointmentRead): strin
     }
   }
 
-  return [...new Set(emails.map((e) => e.toLowerCase()))];
+  return emails.map((e) => e.toLowerCase());
+}
+
+/**
+ * Scan the plain-text body for any email addresses.
+ * This catches forwarded / replied-to message headers such as:
+ *   "From: Customer Name <customer@company.com>"
+ *   "Sent: ... To: someone@company.com"
+ * which are invisible to the Office.js header API.
+ */
+function extractEmailsFromBody(body: string): string[] {
+  return (body.match(EMAIL_REGEX) ?? []).map((e) => e.toLowerCase());
 }
 
 function getItemDate(item: Office.MessageRead | Office.AppointmentRead): string {
@@ -62,28 +78,29 @@ export function getItemContext(): Promise<ItemContext> {
     const item = Office.context.mailbox.item;
     if (!item) return reject(new Error('No item selected'));
 
-    const allEmails = collectEmails(item as Office.MessageRead | Office.AppointmentRead);
-    const externalEmails = allEmails.filter((e) => !isInternal(e));
-    const externalDomains = [...new Set(externalEmails.map(extractDomain).filter(Boolean))];
+    const headerEmails = collectHeaderEmails(item as Office.MessageRead | Office.AppointmentRead);
     const date = getItemDate(item as Office.MessageRead | Office.AppointmentRead);
     const subject = (item as { subject: string }).subject ?? '';
     const type = item.itemType === Office.MailboxEnums.ItemType.Appointment ? 'appointment' : 'message';
 
-    // Fetch body asynchronously
+    // Fetch body asynchronously so we can also mine forwarded-message headers
     item.body.getAsync(Office.CoercionType.Text, { asyncContext: 'body' }, (result) => {
-      if (result.status === Office.AsyncResultStatus.Failed) {
-        // Non-fatal — proceed without body
-        resolve({ type, subject, date, body: '', participants: externalEmails, externalDomains });
-      } else {
-        resolve({
-          type,
-          subject,
-          date,
-          body: result.value ?? '',
-          participants: externalEmails,
-          externalDomains,
-        });
-      }
+      const bodyText = result.status === Office.AsyncResultStatus.Succeeded ? (result.value ?? '') : '';
+      const bodyEmails = extractEmailsFromBody(bodyText);
+
+      // Merge header + body addresses, deduplicate
+      const allEmails = [...new Set([...headerEmails, ...bodyEmails])];
+      const externalEmails = allEmails.filter((e) => !isInternal(e));
+      const externalDomains = [...new Set(externalEmails.map(extractDomain).filter(Boolean))];
+
+      resolve({
+        type,
+        subject,
+        date,
+        body: bodyText,
+        participants: externalEmails,
+        externalDomains,
+      });
     });
   });
 }
